@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Day, Mapped</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --dawn:#E8A33D;
+    --sage:#5F8B6B;
+    --clay:#B8623B;
+    --peri:#6C74B8;
+    --indigo:#3A4082;
+    --night:#12142A;
+
+    --bg:#0A0B16;
+    --panel:#13152A;
+    --panel-line:rgba(255,255,255,0.08);
+    --text:#EDE9DD;
+    --text-dim:#9A96A8;
+    --now-bg:rgba(255,255,255,0.05);
+
+    --dial-outer:280px;
+    --dial-inner:172px;
+    --hand-len:140px;
+    --max-w:460px;
+  }
+  body[data-theme="light"]{
+    --bg:#F6F1E3;
+    --panel:#FFFFFF;
+    --panel-line:rgba(28,22,10,0.10);
+    --text:#211D14;
+    --text-dim:#79715F;
+    --now-bg:rgba(28,22,10,0.045);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 120% 60% at 50% -10%, rgba(232,163,61,0.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding:28px 18px 60px;
+    transition:background-color 0.2s ease, color 0.2s ease;
+  }
+  .app{max-width:var(--max-w); margin:0 auto;}
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:6px;
+  }
+  .theme-toggle{
+    width:34px; height:34px;
+    border-radius:50%;
+    border:1px solid var(--panel-line);
+    background:var(--panel);
+    color:var(--text);
+    font-size:15px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:background 0.15s ease, transform 0.15s ease;
+    flex-shrink:0;
+  }
+  .theme-toggle:hover{transform:scale(1.06);}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.16em;
+    color:var(--text-dim);
+    text-transform:uppercase;
+  }
+  header{margin-bottom:28px;}
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:32px;
+    line-height:1.15;
+    margin:6px 0 10px;
+    color:var(--text);
+  }
+  .rightnow-meta{
+    display:flex;
+    gap:14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--text-dim);
+    flex-wrap:wrap;
+  }
+  .rightnow-meta b{color:var(--text); font-weight:500;}
+  .nextup{
+    margin-top:10px;
+    font-size:13.5px;
+    color:var(--text-dim);
+  }
+  .nextup b{color:var(--text); font-weight:600;}
+
+  .dial-wrap{
+    display:flex;
+    justify-content:center;
+    margin:8px 0 20px;
+    position:relative;
+  }
+  .dial-outer{
+    position:relative;
+    width:var(--dial-outer); height:var(--dial-outer);
+    border-radius:50%;
+    box-shadow: 0 0 0 1px var(--panel-line), 0 30px 60px -20px rgba(0,0,0,0.6);
+  }
+
+  .now-hand{
+    position:absolute;
+    left:50%; top:50%;
+    width:2px; height:var(--hand-len);
+    background:linear-gradient(to top, var(--text), transparent);
+    transform-origin:bottom center;
+    transform:translate(-50%,-100%) rotate(0deg);
+    border-radius:2px;
+    opacity:0.9;
+  }
+  .now-dot{
+    position:absolute; left:50%; top:50%;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--text);
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 8px rgba(0,0,0,0.3);
+  }
+
+  .dial-inner{
+    position:absolute;
+    left:50%; top:50%;
+    width:var(--dial-inner); height:var(--dial-inner);
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    box-shadow: inset 0 0 0 1px var(--panel-line);
+  }
+  .clock-digital{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:26px;
+    font-weight:500;
+    letter-spacing:0.02em;
+  }
+  .clock-date{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+
+  .caption{
+    text-align:center;
+    font-size:13px;
+    color:var(--text-dim);
+    max-width:280px;
+    margin:0 auto 26px;
+    line-height:1.5;
+  }
+  .caption b{color:var(--text); font-weight:500;}
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 14px;
+    justify-content:center;
+    margin-bottom:30px;
+  }
+  .legend-item{
+    display:flex; align-items:center; gap:6px;
+    font-size:11.5px;
+    color:var(--text-dim);
+  }
+  .legend-dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+
+  .control{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:26px;
+  }
+  .control-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    margin-bottom:10px;
+  }
+  .segmented{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+  }
+  .segmented button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    padding:9px 4px;
+    border-radius:8px;
+    border:1px solid var(--panel-line);
+    background:transparent;
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .segmented button.active{
+    background:var(--peri);
+    border-color:var(--peri);
+    color:#fff;
+  }
+
+  .pomodoro{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:14px;
+    padding:18px 16px 16px;
+    margin-bottom:26px;
+  }
+  .pomo-body{display:flex; flex-direction:column; align-items:center;}
+  .pomo-ring-wrap{margin:4px 0 12px;}
+  .pomo-ring{
+    width:148px; height:148px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pomo-ring-inner{
+    width:116px; height:116px; border-radius:50%;
+    background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:inset 0 0 0 1px var(--panel-line);
+  }
+  .pomo-time{font-family:'IBM Plex Mono', monospace; font-size:25px; font-weight:500;}
+  .pomo-phase{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+  .pomo-dots{display:flex; gap:6px; margin-bottom:14px;}
+  .pomo-dot{width:7px; height:7px; border-radius:50%; background:var(--panel-line);}
+  .pomo-dot.filled{background:var(--sage);}
+  .pomo-controls{display:flex; gap:8px; margin-bottom:10px;}
+  .pomo-btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    padding:9px 18px;
+    border-radius:8px;
+    border:1px solid var(--panel-line);
+    background:transparent;
+    color:var(--text);
+    cursor:pointer;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  .pomo-btn.primary{background:var(--sage); border-color:var(--sage); color:#fff;}
+  .pomo-btn.ghost{border-color:transparent; color:var(--text-dim); padding:9px 10px;}
+  .pomo-stat{font-size:11.5px; color:var(--text-dim);}
+
+  .agenda-title{
+    font-family:'Fraunces', serif;
+    font-size:17px;
+    font-weight:600;
+    margin-bottom:12px;
+  }
+  .agenda{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .agenda-item{
+    display:flex;
+    gap:12px;
+    padding:12px 10px;
+    border-radius:10px;
+    border:1px solid transparent;
+  }
+  .agenda-item.now{
+    background:var(--now-bg);
+    border-color:var(--panel-line);
+  }
+  .agenda-bar{
+    width:3px;
+    border-radius:3px;
+    flex-shrink:0;
+  }
+  .agenda-time{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    min-width:104px;
+    padding-top:1px;
+  }
+  .agenda-item.now .agenda-time{color:var(--text);}
+  .agenda-label{
+    font-size:14px;
+    font-weight:400;
+  }
+  .agenda-item.now .agenda-label{font-weight:600;}
+  .now-tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.1em;
+    color:var(--peri);
+    margin-left:8px;
+  }
+
+  .gita-card{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:14px;
+    padding:28px 26px;
+    margin-top:22px;
+    text-align:center;
+  }
+  .gita-quote{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:19px;
+    line-height:1.55;
+    color:var(--text);
+    margin:14px 0 10px;
+  }
+  .gita-ref{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:0.04em;
+  }
+  .gita-shuffle{
+    margin-top:18px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    background:transparent;
+    border:1px solid var(--panel-line);
+    color:var(--text-dim);
+    padding:8px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:color 0.15s ease, border-color 0.15s ease;
+  }
+  .gita-shuffle:hover{color:var(--text); border-color:var(--peri);}
+
+  .gif-card{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:14px;
+    padding:20px;
+    margin-top:22px;
+    text-align:center;
+    display:none;
+  }
+  .gif-card.visible{display:block;}
+  .gif-image{
+    display:block;
+    max-width:100%;
+    max-height:280px;
+    margin:12px auto 0;
+    border-radius:10px;
+    object-fit:contain;
+  }
+
+  footer{
+    text-align:center;
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:34px;
+    line-height:1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .segmented button{transition:none;}
+  }
+
+  /* Tablet: more breathing room, bigger dial */
+  @media (min-width:640px){
+    :root{
+      --max-w:600px;
+      --dial-outer:320px;
+      --dial-inner:196px;
+      --hand-len:160px;
+    }
+    body{padding:40px 28px 70px;}
+    h1{font-size:36px;}
+  }
+
+  /* Laptop and up: two-column layout, dial/controls stay put, agenda scrolls beside it */
+  @media (min-width:960px){
+    :root{
+      --max-w:1000px;
+      --dial-outer:300px;
+      --dial-inner:184px;
+      --hand-len:150px;
+    }
+    body{padding:56px 32px 90px;}
+    .app{
+      display:grid;
+      grid-template-columns:380px 1fr;
+      column-gap:56px;
+    }
+    .col-left{position:sticky; top:32px; align-self:start;}
+    .dial-wrap{margin-top:4px;}
+    .agenda-title{margin-top:0;}
+    .col-right{display:flex; flex-direction:column;}
+    .gita-card{flex:1; display:flex; flex-direction:column; justify-content:center;}
+    footer{grid-column:1 / -1; margin-top:44px;}
+  }
+
+  @media (min-width:1280px){
+    :root{--max-w:1120px;}
+    .agenda-item{padding:13px 12px;}
+    .agenda-label{font-size:15px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="col-left">
+    <header>
+      <div class="topbar">
+        <div class="eyebrow">Your day, mapped</div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark or light mode">🌙</button>
+      </div>
+      <h1 id="rightNowLabel">Loading…</h1>
+      <div class="rightnow-meta">
+        <span><b id="rightNowClock">--:--</b></span>
+        <span id="timeLeft"></span>
+      </div>
+      <div class="nextup" id="nextUp"></div>
+    </header>
+
+    <div class="dial-wrap">
+      <div class="dial-outer" id="dialOuter">
+        <div class="now-hand" id="nowHand"></div>
+        <div class="now-dot"></div>
+        <div class="dial-inner">
+          <div class="clock-digital" id="digitalClock">--:--</div>
+          <div class="clock-date" id="digitalDate">---</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="caption" id="captionText">Warm tones are <b>your</b> hours &mdash; focus, gym, meals. Cool tones belong to <b>work and rest</b>. Bed at 3, up at 10:30, every night, no matter when the shift starts.</p>
+
+    <div class="legend" id="legend"></div>
+
+    <div class="control">
+      <div class="control-label">Tonight's shift starts</div>
+      <div class="segmented" id="shiftControl">
+        <button data-hour="17">5 PM</button>
+        <button data-hour="18">6 PM</button>
+        <button data-hour="19">7 PM</button>
+        <button data-hour="20">8 PM</button>
+        <button data-hour="off">No shift</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-right">
+    <div class="agenda-title">Full day</div>
+    <div class="agenda" id="agenda"></div>
+
+    <div class="gita-card">
+      <div class="control-label">Verse for today</div>
+      <div class="gita-quote" id="gitaText">Loading…</div>
+      <div class="gita-ref" id="gitaRef"></div>
+      <button class="gita-shuffle" id="gitaShuffle">Another verse &rsaquo;</button>
+    </div>
+
+    <div class="gif-card" id="gifCard">
+      <div class="control-label">Little break</div>
+      <img class="gif-image" id="gifImage" alt="">
+    </div>
+  </div>
+
+  <div class="pomodoro" id="pomodoroCard">
+    <div class="control-label">Focus timer &mdash; 25 on, 5 off</div>
+    <div class="pomo-body">
+      <div class="pomo-ring-wrap">
+        <div class="pomo-ring" id="pomoRing">
+          <div class="pomo-ring-inner">
+            <div class="pomo-time" id="pomoTime">25:00</div>
+            <div class="pomo-phase" id="pomoPhase">Focus</div>
+          </div>
+        </div>
+      </div>
+      <div class="pomo-dots" id="pomoDots"></div>
+      <div class="pomo-controls">
+        <button class="pomo-btn primary" id="pomoStart">Start</button>
+        <button class="pomo-btn" id="pomoReset">Reset</button>
+        <button class="pomo-btn ghost" id="pomoSkip">Skip &rsaquo;</button>
+      </div>
+      <div class="pomo-stat" id="pomoStat">0 focus sessions today</div>
+    </div>
+  </div>
+
+  <footer>Anchored on a 10:30 AM wake every day &mdash; bedtime flexes around your shift, or your recovery, when there isn't one.</footer>
+</div>
+
+<script>
+const COLORS = {
+  dawn: '#E8A33D',
+  sage: '#5F8B6B',
+  clay: '#B8623B',
+  peri: '#6C74B8',
+  indigo: '#3A4082',
+  night: '#12142A'
+};
+const LEGEND_ORDER = [
+  ['dawn','Wake / meals / rest'],
+  ['sage','Job search'],
+  ['clay','Gym'],
+  ['peri','Commute'],
+  ['indigo','Shift'],
+  ['night','Sleep']
+];
+
+let shiftStartHour = 18;
+let segmentsBase = [];
+
+function fmtTime(cycleMin){
+  const real = ((cycleMin % 1440) + 1440) % 1440;
+  let h = Math.floor(real/60);
+  const m = real%60;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  let h12 = h % 12; if(h12===0) h12=12;
+  return h12 + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+}
+function fmtDuration(min){
+  const h = Math.floor(min/60), m = min%60;
+  if(h<=0) return m+'m';
+  if(m===0) return h+'h';
+  return h+'h '+m+'m';
+}
+
+function gymInfo(){
+  const d = new Date().getDay(); // 0 Sun ... 6 Sat
+  if(d===1) return {label:'Gym — Chest, Triceps & Shoulders', active:true};
+  if(d===4) return {label:'Gym — Back, Biceps & Abs', active:true};
+  if(d===5) return {label:'Gym — Legs', active:true};
+  return {label:'Applications & follow-ups', active:false};
+}
+
+function buildDayShift(startHour){
+  const gym = gymInfo();
+  const shiftStartCycle = startHour*60;
+  const leaveMin = shiftStartCycle - 35;
+  const list = [
+    {label:'Wake & shower', type:'dawn', start:630, dur:15},
+    {label:'Breakfast & meditation', type:'dawn', start:645, dur:30},
+    {label:'Job search — deep work', type:'sage', start:675, dur:165},
+    {label:'Lunch', type:'dawn', start:840, dur:30},
+    {label: gym.label, type: gym.active ? 'clay' : 'sage', start:870, dur:105},
+    {label:'Meal, rest & prep', type:'dawn', start:975, dur:leaveMin-975},
+    {label:'Commute to work', type:'peri', start:leaveMin, dur:35},
+    {label:'Shift — work', type:'indigo', start:shiftStartCycle, dur:1560-shiftStartCycle},
+    {label:'Commute home', type:'peri', start:1560, dur:45},
+    {label:'Shower & wind down', type:'night', start:1605, dur:15},
+    {label:'Sleep', type:'night', start:1620, dur:450}
+  ];
+  return list;
+}
+
+function buildDayOff(){
+  const gym = gymInfo();
+  const list = [
+    {label:'Wake & shower', type:'dawn', start:630, dur:15},
+    {label:'Breakfast & meditation', type:'dawn', start:645, dur:30},
+    {label:'Job search — deep work', type:'sage', start:675, dur:165},
+    {label:'Lunch', type:'dawn', start:840, dur:30},
+    {label: gym.label, type: gym.active ? 'clay' : 'sage', start:870, dur:105},
+    {label:'Post-gym meal & recovery', type:'dawn', start:975, dur:45},
+    {label:'Applications & follow-ups', type:'sage', start:1020, dur:90},
+    {label:'Dinner', type:'dawn', start:1110, dur:30},
+    {label:'Free time — chess, football, calls home', type:'dawn', start:1140, dur:240},
+    {label:'Wind-down — reading & meditation', type:'dawn', start:1380, dur:45},
+    {label:'Sleep', type:'night', start:1425, dur:645}
+  ];
+  return list;
+}
+
+function buildSchedule(mode){
+  return mode === 'off' ? buildDayOff() : buildDayShift(mode);
+}
+
+function buildDialGradient(list){
+  // split any segment crossing the 1440 boundary into two pieces, sort by absolute start
+  let pieces = [];
+  list.forEach(seg=>{
+    const start = seg.start, end = seg.start+seg.dur;
+    const startLap = Math.floor(start/1440);
+    const endLap = Math.floor((end-0.001)/1440);
+    if(startLap === endLap){
+      pieces.push({start:start%1440, end: (end%1440===0? 1440 : end%1440), type:seg.type});
+    } else {
+      pieces.push({start:start%1440, end:1440, type:seg.type});
+      pieces.push({start:0, end:end%1440, type:seg.type});
+    }
+  });
+  pieces.sort((a,b)=>a.start-b.start);
+  let stops = [];
+  pieces.forEach(p=>{
+    const p0 = (p.start/1440*100).toFixed(3);
+    const p1 = (p.end/1440*100).toFixed(3);
+    stops.push(COLORS[p.type]+' '+p0+'%', COLORS[p.type]+' '+p1+'%');
+  });
+  return 'conic-gradient(from 0deg at 50% 50%, ' + stops.join(', ') + ')';
+}
+
+function renderLegend(){
+  const el = document.getElementById('legend');
+  el.innerHTML = LEGEND_ORDER.map(([key,label])=>
+    '<div class="legend-item"><span class="legend-dot" style="background:'+COLORS[key]+'"></span>'+label+'</div>'
+  ).join('');
+}
+
+function renderAgenda(list){
+  const el = document.getElementById('agenda');
+  el.innerHTML = list.map((seg,i)=>{
+    const start = seg.start, end = seg.start+seg.dur;
+    return '<div class="agenda-item" data-i="'+i+'">'
+      + '<div class="agenda-bar" style="background:'+COLORS[seg.type]+'"></div>'
+      + '<div class="agenda-time">'+fmtTime(start)+' – '+fmtTime(end)+'</div>'
+      + '<div class="agenda-label">'+seg.label+'<span class="now-tag" data-tag="'+i+'"></span></div>'
+      + '</div>';
+  }).join('');
+}
+
+function findCurrentIndex(list, cycleVal){
+  for(let i=0;i<list.length;i++){
+    const s = list[i].start, e = list[i].start+list[i].dur;
+    if(cycleVal>=s && cycleVal<e) return i;
+  }
+  return -1;
+}
+
+function update(){
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  const cycleVal = nowMin>=630 ? nowMin : nowMin+1440;
+
+  const idx = findCurrentIndex(segmentsBase, cycleVal);
+
+  document.getElementById('digitalClock').textContent =
+    String(now.getHours()%12===0?12:now.getHours()%12).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + (now.getHours()<12?' AM':' PM');
+  document.getElementById('digitalDate').textContent =
+    now.toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+
+  const hand = document.getElementById('nowHand');
+  hand.style.transform = 'translate(-50%,-100%) rotate(' + (nowMin/1440*360) + 'deg)';
+
+  document.querySelectorAll('.agenda-item').forEach(elItem=>elItem.classList.remove('now'));
+  document.querySelectorAll('[data-tag]').forEach(t=>t.textContent='');
+
+  if(idx>-1){
+    const seg = segmentsBase[idx];
+    const end = seg.start+seg.dur;
+    const remaining = end - cycleVal;
+    document.getElementById('rightNowLabel').textContent = seg.label;
+    document.getElementById('rightNowClock').textContent = fmtTime(cycleVal);
+    document.getElementById('timeLeft').textContent = fmtDuration(remaining) + ' left';
+    const nextSeg = segmentsBase[(idx+1)%segmentsBase.length];
+    document.getElementById('nextUp').innerHTML = 'Next: <b>' + nextSeg.label + '</b> at ' + fmtTime(nextSeg.start);
+    const rowEl = document.querySelector('.agenda-item[data-i="'+idx+'"]');
+    if(rowEl){
+      rowEl.classList.add('now');
+      const tag = rowEl.querySelector('[data-tag]');
+      if(tag) tag.textContent = 'NOW';
+    }
+  }
+}
+
+let theme = 'dark';
+
+async function loadTheme(){
+  try{
+    const res = await window.storage.get('schedule-theme');
+    if(res && res.value && (res.value==='dark' || res.value==='light')){
+      theme = res.value;
+      return;
+    }
+  }catch(e){ /* no saved preference yet */ }
+  theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+}
+async function saveTheme(){
+  try{ await window.storage.set('schedule-theme', theme, false); }
+  catch(e){ /* storage unavailable, ignore */ }
+}
+function applyTheme(){
+  document.body.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme==='light' ? '☀' : '🌙';
+}
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  theme = theme==='light' ? 'dark' : 'light';
+  applyTheme();
+  saveTheme();
+});
+
+async function loadPref(){
+  try{
+    const res = await window.storage.get('schedule-shift-start-hour');
+    if(res && res.value){
+      if(res.value==='off'){ shiftStartHour = 'off'; }
+      else{
+        const v = parseInt(res.value, 10);
+        if([17,18,19,20].includes(v)) shiftStartHour = v;
+      }
+    }
+  }catch(e){ /* no saved preference yet */ }
+}
+async function savePref(v){
+  try{ await window.storage.set('schedule-shift-start-hour', String(v), false); }
+  catch(e){ /* storage unavailable, ignore */ }
+}
+
+function setActiveButton(){
+  document.querySelectorAll('#shiftControl button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.hour===String(shiftStartHour));
+  });
+}
+
+function updateCaption(){
+  const el = document.getElementById('captionText');
+  if(shiftStartHour==='off'){
+    el.innerHTML = 'No shift tonight &mdash; the evening is yours. Sleep is flexible, but keep the <b>10:30 AM</b> wake anchor for tomorrow.';
+  } else {
+    el.innerHTML = 'Warm tones are <b>your</b> hours &mdash; focus, gym, meals. Cool tones belong to <b>work and rest</b>. Bed at 3, up at 10:30, every night, no matter when the shift starts.';
+  }
+}
+
+function rebuild(){
+  segmentsBase = buildSchedule(shiftStartHour);
+  document.getElementById('dialOuter').style.background = buildDialGradient(segmentsBase);
+  renderAgenda(segmentsBase);
+  setActiveButton();
+  updateCaption();
+  update();
+}
+
+document.getElementById('shiftControl').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  shiftStartHour = btn.dataset.hour==='off' ? 'off' : parseInt(btn.dataset.hour,10);
+  savePref(shiftStartHour);
+  rebuild();
+});
+
+/* ---------- Pomodoro focus timer ---------- */
+const POMO_FOCUS = 25*60;
+const POMO_BREAK = 5*60;
+const POMO_LONG = 15*60;
+const POMO_CYCLES_BEFORE_LONG = 4;
+
+let pomoPhase = 'focus';      // 'focus' | 'break' | 'long'
+let pomoTotal = POMO_FOCUS;
+let pomoRemaining = POMO_FOCUS;
+let pomoRunning = false;
+let pomoTimerId = null;
+let pomoCycleCount = 0;       // focus sessions completed since last long break
+let pomoTodayCount = 0;
+
+function pomoPhaseLabel(){
+  if(pomoPhase==='focus') return 'Focus';
+  if(pomoPhase==='long') return 'Long break';
+  return 'Break';
+}
+function pomoFormatTime(s){
+  const m = Math.floor(s/60), sec = s%60;
+  return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+}
+function pomoRenderDots(){
+  let html='';
+  for(let i=0;i<POMO_CYCLES_BEFORE_LONG;i++){
+    html += '<div class="pomo-dot'+(i<pomoCycleCount?' filled':'')+'"></div>';
+  }
+  document.getElementById('pomoDots').innerHTML = html;
+}
+function pomoRenderRing(){
+  const pct = Math.max(0, Math.min(100, 100 - (pomoRemaining/pomoTotal*100)));
+  const color = pomoPhase==='focus' ? COLORS.sage : COLORS.dawn;
+  document.getElementById('pomoRing').style.background =
+    'conic-gradient('+color+' '+pct.toFixed(2)+'%, var(--panel-line) '+pct.toFixed(2)+'%)';
+}
+function pomoRender(){
+  document.getElementById('pomoTime').textContent = pomoFormatTime(pomoRemaining);
+  document.getElementById('pomoPhase').textContent = pomoPhaseLabel();
+  document.getElementById('pomoStart').textContent = pomoRunning ? 'Pause' : 'Start';
+  document.getElementById('pomoStat').textContent =
+    pomoTodayCount + (pomoTodayCount===1 ? ' focus session today' : ' focus sessions today');
+  pomoRenderDots();
+  pomoRenderRing();
+}
+function pomoBeep(){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = pomoPhase==='focus' ? 523 : 392;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.45);
+    o.start();
+    o.stop(ctx.currentTime+0.5);
+  }catch(e){ /* audio unavailable, silently skip */ }
+}
+async function savePomoState(){
+  try{
+    const today = new Date().toISOString().slice(0,10);
+    await window.storage.set('pomodoro-today', JSON.stringify({date:today, count:pomoTodayCount}), false);
+  }catch(e){ /* storage unavailable, ignore */ }
+}
+async function loadPomoState(){
+  try{
+    const res = await window.storage.get('pomodoro-today');
+    if(res && res.value){
+      const data = JSON.parse(res.value);
+      const today = new Date().toISOString().slice(0,10);
+      if(data.date===today) pomoTodayCount = data.count || 0;
+    }
+  }catch(e){ /* nothing saved yet */ }
+}
+function pomoNextPhase(){
+  if(pomoPhase==='focus'){
+    pomoCycleCount++;
+    pomoTodayCount++;
+    savePomoState();
+    if(pomoCycleCount>=POMO_CYCLES_BEFORE_LONG){
+      pomoPhase='long';
+      pomoCycleCount=0;
+      pomoTotal=POMO_LONG;
+    }else{
+      pomoPhase='break';
+      pomoTotal=POMO_BREAK;
+    }
+  }else{
+    pomoPhase='focus';
+    pomoTotal=POMO_FOCUS;
+  }
+  pomoRemaining = pomoTotal;
+  pomoBeep();
+  pomoRender();
+}
+function pomoTick(){
+  pomoRemaining--;
+  if(pomoRemaining<=0){ pomoNextPhase(); return; }
+  pomoRender();
+}
+function pomoStartPause(){
+  if(pomoRunning){
+    clearInterval(pomoTimerId);
+    pomoRunning=false;
+  }else{
+    pomoRunning=true;
+    pomoTimerId = setInterval(pomoTick, 1000);
+  }
+  pomoRender();
+}
+function pomoReset(){
+  clearInterval(pomoTimerId);
+  pomoRunning=false;
+  pomoPhase='focus';
+  pomoTotal=POMO_FOCUS;
+  pomoRemaining=POMO_FOCUS;
+  pomoCycleCount=0;
+  pomoRender();
+}
+function pomoSkip(){
+  clearInterval(pomoTimerId);
+  pomoRunning=false;
+  pomoNextPhase();
+}
+document.getElementById('pomoStart').addEventListener('click', pomoStartPause);
+document.getElementById('pomoReset').addEventListener('click', pomoReset);
+document.getElementById('pomoSkip').addEventListener('click', pomoSkip);
+
+/* ---------- Bhagavad Gita verse card ---------- */
+const GITA_VERSES = [
+  {ref:'2.47', text:'Focus on the effort, not the outcome. The work is yours to do — the results were never yours to control.'},
+  {ref:'2.48', text:'Steadiness of mind through success and failure alike — that itself is the real skill.'},
+  {ref:'2.14', text:'Pleasure and pain move like the seasons: they arrive, and they pass. Learn to meet both without losing your center.'},
+  {ref:'3.19', text:'Do what must be done, without clinging to it. Acting without attachment is how a person moves toward what is highest.'},
+  {ref:'6.5', text:'You are your own greatest friend, and your own worst enemy — the difference is entirely in your own hands.'},
+  {ref:'6.35', text:'The mind is restless and hard to master, yes. But with steady practice and patience, it can be tamed.'},
+  {ref:'2.3', text:'Do not yield to weakness. It does not suit someone capable of better.'},
+  {ref:'2.40', text:'No sincere effort on this path is ever wasted, and no small progress goes unprotected.'},
+  {ref:'3.35', text:'Better to walk your own imperfect path than to master someone else\'s. Even done imperfectly, your own way is safer.'},
+  {ref:'2.38', text:'Treat gain and loss, victory and defeat, the same way — and act. That way, you\'re never truly at fault.'},
+  {ref:'4.34', text:'Seek out those who have wisdom, ask honestly, and be willing to serve and learn. That is how real understanding comes.'},
+  {ref:'6.17', text:'Balance in eating, rest, work, and sleep — that balance itself becomes the discipline that ends all suffering.'},
+  {ref:'2.20', text:'What is truly real is never destroyed and was never born. It simply continues, changing form.'},
+  {ref:'16.1–3', text:'Fearlessness, purity of heart, and steady effort in self-mastery — these are the marks of a clear mind.'},
+  {ref:'18.66', text:'Let go of every lesser refuge and turn toward what is highest. That alone will not fail you.'}
+];
+let gitaIndex = 0;
+
+function dayOfYear(d){
+  const start = new Date(d.getFullYear(), 0, 0);
+  return Math.floor((d - start) / 86400000);
+}
+function renderGita(){
+  const v = GITA_VERSES[gitaIndex];
+  document.getElementById('gitaText').textContent = '\u201C' + v.text + '\u201D';
+  document.getElementById('gitaRef').textContent = 'Bhagavad Gita ' + v.ref;
+}
+document.getElementById('gitaShuffle').addEventListener('click', ()=>{
+  let next;
+  do{ next = Math.floor(Math.random()*GITA_VERSES.length); } while(next===gitaIndex && GITA_VERSES.length>1);
+  gitaIndex = next;
+  renderGita();
+});
+
+/* ---------- Gif slideshow, sourced live from the GitHub repo's GIF folder ----------
+   New gifs added to /GIF in the repo show up automatically on next load —
+   no code changes needed. Cycles to the next gif every 5 minutes. */
+const GITHUB_OWNER = 'Paras566';
+const GITHUB_REPO = 'Daily_Schedule';
+const GITHUB_GIF_PATH = 'GIF';
+const GIF_ROTATE_MS = 5 * 60 * 1000;
+
+let gifList = [];
+let gifIndex = 0;
+let gifTimerId = null;
+
+function shuffleArray(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function showGif(){
+  if(!gifList.length) return;
+  const card = document.getElementById('gifCard');
+  const img = document.getElementById('gifImage');
+  const gif = gifList[gifIndex % gifList.length];
+  img.src = gif.url;
+  img.alt = gif.name;
+  card.classList.add('visible');
+}
+
+function advanceGif(){
+  gifIndex = (gifIndex + 1) % gifList.length;
+  if(gifIndex === 0) shuffleArray(gifList);
+  showGif();
+}
+
+async function loadGifs(){
+  const apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_GIF_PATH;
+  try{
+    const res = await fetch(apiUrl);
+    if(!res.ok) throw new Error('GitHub API request failed');
+    const items = await res.json();
+    const gifs = items
+      .filter(item => item.type === 'file' && /\.gif$/i.test(item.name))
+      .map(item => ({name:item.name, url:item.download_url}));
+    if(!gifs.length) throw new Error('No gifs found');
+    gifList = shuffleArray(gifs);
+    try{ await window.storage.set('gif-cache', JSON.stringify(gifList), false); }catch(e){ /* storage unavailable, ignore */ }
+  }catch(e){
+    try{
+      const cached = await window.storage.get('gif-cache');
+      if(cached && cached.value) gifList = JSON.parse(cached.value);
+    }catch(e2){ /* no cache available either */ }
+  }
+  if(gifList.length){
+    gifIndex = 0;
+    showGif();
+    if(gifTimerId) clearInterval(gifTimerId);
+    gifTimerId = setInterval(advanceGif, GIF_ROTATE_MS);
+  }
+}
+
+/* ---------- Responsive placement of the focus timer ----------
+   Portrait/tablet: stays where it is in the HTML — after the agenda
+   and verse card, right before the footer.
+   Desktop (960px+): moves back into the sticky left column, under
+   the shift-start control, matching the original layout there. */
+const desktopQuery = window.matchMedia('(min-width:960px)');
+function placePomodoro(){
+  const card = document.getElementById('pomodoroCard');
+  const control = document.querySelector('.col-left .control');
+  const app = document.querySelector('.app');
+  const footer = document.querySelector('footer');
+  if(!card || !control || !app || !footer) return;
+  if(desktopQuery.matches){
+    if(card.previousElementSibling !== control) control.insertAdjacentElement('afterend', card);
+  }else{
+    if(card.nextElementSibling !== footer) app.insertBefore(card, footer);
+  }
+}
+if(desktopQuery.addEventListener) desktopQuery.addEventListener('change', placePomodoro);
+else if(desktopQuery.addListener) desktopQuery.addListener(placePomodoro);
+
+(async function init(){
+  renderLegend();
+  await loadTheme();
+  applyTheme();
+  await loadPref();
+  await loadPomoState();
+  pomoRender();
+  gitaIndex = dayOfYear(new Date()) % GITA_VERSES.length;
+  renderGita();
+  placePomodoro();
+  rebuild();
+  setInterval(update, 20000);
+  loadGifs();
+})();
+</script>
+</body>
+</html>
