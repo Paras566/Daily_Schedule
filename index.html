@@ -683,16 +683,16 @@ let theme = 'dark';
 
 async function loadTheme(){
   try{
-    const res = await window.storage.get('schedule-theme');
-    if(res && res.value && (res.value==='dark' || res.value==='light')){
-      theme = res.value;
+    const v = localStorage.getItem('schedule-theme');
+    if(v && (v==='dark' || v==='light')){
+      theme = v;
       return;
     }
   }catch(e){ /* no saved preference yet */ }
   theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
 }
 async function saveTheme(){
-  try{ await window.storage.set('schedule-theme', theme, false); }
+  try{ localStorage.setItem('schedule-theme', theme); }
   catch(e){ /* storage unavailable, ignore */ }
 }
 function applyTheme(){
@@ -707,18 +707,18 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
 
 async function loadPref(){
   try{
-    const res = await window.storage.get('schedule-shift-start-hour');
-    if(res && res.value){
-      if(res.value==='off'){ shiftStartHour = 'off'; }
+    const v = localStorage.getItem('schedule-shift-start-hour');
+    if(v){
+      if(v==='off'){ shiftStartHour = 'off'; }
       else{
-        const v = parseInt(res.value, 10);
-        if([17,18,19,20].includes(v)) shiftStartHour = v;
+        const n = parseInt(v, 10);
+        if([17,18,19,20].includes(n)) shiftStartHour = n;
       }
     }
   }catch(e){ /* no saved preference yet */ }
 }
 async function savePref(v){
-  try{ await window.storage.set('schedule-shift-start-hour', String(v), false); }
+  try{ localStorage.setItem('schedule-shift-start-hour', String(v)); }
   catch(e){ /* storage unavailable, ignore */ }
 }
 
@@ -817,14 +817,14 @@ function pomoBeep(){
 async function savePomoState(){
   try{
     const today = new Date().toISOString().slice(0,10);
-    await window.storage.set('pomodoro-today', JSON.stringify({date:today, count:pomoTodayCount}), false);
+    localStorage.setItem('pomodoro-today', JSON.stringify({date:today, count:pomoTodayCount}));
   }catch(e){ /* storage unavailable, ignore */ }
 }
 async function loadPomoState(){
   try{
-    const res = await window.storage.get('pomodoro-today');
-    if(res && res.value){
-      const data = JSON.parse(res.value);
+    const v = localStorage.getItem('pomodoro-today');
+    if(v){
+      const data = JSON.parse(v);
       const today = new Date().toISOString().slice(0,10);
       if(data.date===today) pomoTodayCount = data.count || 0;
     }
@@ -967,11 +967,11 @@ async function loadGifs(){
       .map(item => ({name:item.name, url:item.download_url}));
     if(!gifs.length) throw new Error('No gifs found');
     gifList = shuffleArray(gifs);
-    try{ await window.storage.set('gif-cache', JSON.stringify(gifList), false); }catch(e){ /* storage unavailable, ignore */ }
+    try{ localStorage.setItem('gif-cache', JSON.stringify(gifList)); }catch(e){ /* storage unavailable, ignore */ }
   }catch(e){
     try{
-      const cached = await window.storage.get('gif-cache');
-      if(cached && cached.value) gifList = JSON.parse(cached.value);
+      const cached = localStorage.getItem('gif-cache');
+      if(cached) gifList = JSON.parse(cached);
     }catch(e2){ /* no cache available either */ }
   }
   if(gifList.length){
