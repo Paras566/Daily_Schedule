@@ -217,6 +217,7 @@
     border-color:var(--peri);
     color:#fff;
   }
+  #gymControl{grid-template-columns:repeat(2,1fr);}
 
   .pomodoro{
     background:var(--panel);
@@ -463,6 +464,16 @@
         <button data-hour="off">No shift</button>
       </div>
     </div>
+
+    <div class="control">
+      <div class="control-label">Today's gym</div>
+      <div class="segmented" id="gymControl">
+        <button data-gym="chest">Chest & Tri</button>
+        <button data-gym="back">Back & Bi</button>
+        <button data-gym="legs">Legs</button>
+        <button data-gym="off">No gym</button>
+      </div>
+    </div>
   </div>
 
   <div class="col-right">
@@ -542,12 +553,46 @@ function fmtDuration(min){
   return h+'h '+m+'m';
 }
 
-function gymInfo(){
+const GYM_OPTIONS = {
+  chest: {label:'Gym — Chest, Triceps & Shoulders', active:true},
+  back: {label:'Gym — Back, Biceps & Abs', active:true},
+  legs: {label:'Gym — Legs', active:true},
+  off: {label:'Applications & follow-ups', active:false}
+};
+
+function defaultGymChoiceForToday(){
   const d = new Date().getDay(); // 0 Sun ... 6 Sat
-  if(d===1) return {label:'Gym — Chest, Triceps & Shoulders', active:true};
-  if(d===4) return {label:'Gym — Back, Biceps & Abs', active:true};
-  if(d===5) return {label:'Gym — Legs', active:true};
-  return {label:'Applications & follow-ups', active:false};
+  if(d===1) return 'chest';
+  if(d===4) return 'back';
+  if(d===5) return 'legs';
+  return 'off';
+}
+
+let gymChoice = defaultGymChoiceForToday();
+
+async function loadGymChoice(){
+  try{
+    const v = localStorage.getItem('schedule-gym-choice');
+    if(v){
+      const data = JSON.parse(v);
+      const today = new Date().toISOString().slice(0,10);
+      if(data.date===today && GYM_OPTIONS[data.choice]){
+        gymChoice = data.choice;
+        return;
+      }
+    }
+  }catch(e){ /* no saved preference yet */ }
+  gymChoice = defaultGymChoiceForToday();
+}
+async function saveGymChoice(){
+  try{
+    const today = new Date().toISOString().slice(0,10);
+    localStorage.setItem('schedule-gym-choice', JSON.stringify({date:today, choice:gymChoice}));
+  }catch(e){ /* storage unavailable, ignore */ }
+}
+
+function gymInfo(){
+  return GYM_OPTIONS[gymChoice] || GYM_OPTIONS.off;
 }
 
 function buildDayShift(startHour){
@@ -726,6 +771,9 @@ function setActiveButton(){
   document.querySelectorAll('#shiftControl button').forEach(b=>{
     b.classList.toggle('active', b.dataset.hour===String(shiftStartHour));
   });
+  document.querySelectorAll('#gymControl button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.gym===gymChoice);
+  });
 }
 
 function updateCaption(){
@@ -751,6 +799,14 @@ document.getElementById('shiftControl').addEventListener('click', (e)=>{
   if(!btn) return;
   shiftStartHour = btn.dataset.hour==='off' ? 'off' : parseInt(btn.dataset.hour,10);
   savePref(shiftStartHour);
+  rebuild();
+});
+
+document.getElementById('gymControl').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  gymChoice = btn.dataset.gym;
+  saveGymChoice();
   rebuild();
 });
 
@@ -1008,6 +1064,7 @@ else if(desktopQuery.addListener) desktopQuery.addListener(placePomodoro);
   await loadTheme();
   applyTheme();
   await loadPref();
+  await loadGymChoice();
   await loadPomoState();
   pomoRender();
   gitaIndex = dayOfYear(new Date()) % GITA_VERSES.length;
