@@ -143,7 +143,12 @@
     align-items:center;
     justify-content:center;
     box-shadow: inset 0 0 0 1px var(--panel-line);
+    overflow:hidden;
   }
+  .analog-clock{display:block; flex-shrink:0; pointer-events:none;}
+  .clock-dark{display:none;}
+  body:not([data-theme="light"]) .clock-dark{display:block;}
+  body:not([data-theme="light"]) .clock-light{display:none;}
   .clock-digital{
     font-family:'IBM Plex Mono', monospace;
     font-size:26px;
@@ -444,8 +449,10 @@
         <div class="now-hand" id="nowHand"></div>
         <div class="now-dot"></div>
         <div class="dial-inner">
-          <div class="clock-digital" id="digitalClock">--:--</div>
-          <div class="clock-date" id="digitalDate">---</div>
+          <iframe class="analog-clock clock-light" src="https://free.timeanddate.com/clock/ianrczgw/n1352/szw198/szh198/hoc000/hbw0/hfcf6f1e2/cf100/hgr0/hwcf6f1e2/fas20/fdi68/mqc000/mqs3/mql13/mqw2/mqd94/mhc000/mhs3/mhl13/mhw2/mhd94/mmc000/mml5/mmw1/mmd94/hwm2/hhs2/hhb18/hms2/hml80/hmb18/hmw3/hmr7/hss1/hsl90/hsw2/hsr5" frameborder="0" width="198" height="198" title="Analog clock"></iframe>
+          <iframe class="analog-clock clock-dark" src="https://free.timeanddate.com/clock/ianrczgw/n1352/szw198/szh198/hoc000/hbw0/hfc000/cf100/hgr0/fas20/facfff/fdi68/mqcfff/mqs3/mql13/mqw2/mqd94/mhcfff/mhs3/mhl13/mhw2/mhd94/mmcfff/mml5/mmw1/mmd94/hwm2/hhcfff/hhs2/hhb18/hmcfff/hms2/hml80/hmb18/hmw3/hmr7/hss1/hsl90/hsw2/hsr5" frameborder="0" width="198" height="198" title="Analog clock"></iframe>
+          <div class="clock-digital" id="digitalClock" hidden></div>
+          <div class="clock-date" id="digitalDate" hidden></div>
         </div>
       </div>
     </div>
@@ -453,17 +460,6 @@
     <p class="caption" id="captionText">Warm tones are <b>your</b> hours &mdash; focus, gym, meals. Cool tones belong to <b>work and rest</b>. Bed at 3, up at 10:30, every night, no matter when the shift starts.</p>
 
     <div class="legend" id="legend"></div>
-
-    <div class="control">
-      <div class="control-label">Tonight's shift starts</div>
-      <div class="segmented" id="shiftControl">
-        <button data-hour="17">5 PM</button>
-        <button data-hour="18">6 PM</button>
-        <button data-hour="19">7 PM</button>
-        <button data-hour="20">8 PM</button>
-        <button data-hour="off">No shift</button>
-      </div>
-    </div>
 
     <div class="control">
       <div class="control-label">Today's gym</div>
@@ -514,7 +510,7 @@
     </div>
   </div>
 
-  <footer>Anchored on a 10:30 AM wake every day &mdash; bedtime flexes around your shift, or your recovery, when there isn't one.</footer>
+  <footer>Anchored on a 10:30 AM wake every day &mdash; job search, skills, gym, rest.</footer>
 </div>
 
 <script>
@@ -535,7 +531,7 @@ const LEGEND_ORDER = [
   ['night','Sleep']
 ];
 
-let shiftStartHour = 18;
+let shiftStartHour = 'off'; // left the shift job: always the full-day schedule
 let segmentsBase = [];
 
 function fmtTime(cycleMin){
@@ -626,7 +622,8 @@ function buildDayOff(){
     {label:'Post-gym meal & recovery', type:'dawn', start:975, dur:45},
     {label:'Applications & follow-ups', type:'sage', start:1020, dur:90},
     {label:'Dinner', type:'dawn', start:1110, dur:30},
-    {label:'Free time — chess, football, calls home', type:'dawn', start:1140, dur:240},
+    {label:'Skill building — coding, portfolio, courses', type:'sage', start:1140, dur:120},
+    {label:'Free time — chess, football, calls home', type:'dawn', start:1260, dur:120},
     {label:'Wind-down — reading & meditation', type:'dawn', start:1380, dur:45},
     {label:'Sleep', type:'night', start:1425, dur:645}
   ];
@@ -768,9 +765,6 @@ async function savePref(v){
 }
 
 function setActiveButton(){
-  document.querySelectorAll('#shiftControl button').forEach(b=>{
-    b.classList.toggle('active', b.dataset.hour===String(shiftStartHour));
-  });
   document.querySelectorAll('#gymControl button').forEach(b=>{
     b.classList.toggle('active', b.dataset.gym===gymChoice);
   });
@@ -779,7 +773,7 @@ function setActiveButton(){
 function updateCaption(){
   const el = document.getElementById('captionText');
   if(shiftStartHour==='off'){
-    el.innerHTML = 'No shift tonight &mdash; the evening is yours. Sleep is flexible, but keep the <b>10:30 AM</b> wake anchor for tomorrow.';
+    el.innerHTML = 'Every hour is yours now &mdash; job search and skill building in green, gym in clay, rest in warm tones. Keep the <b>10:30 AM</b> wake anchor.';
   } else {
     el.innerHTML = 'Warm tones are <b>your</b> hours &mdash; focus, gym, meals. Cool tones belong to <b>work and rest</b>. Bed at 3, up at 10:30, every night, no matter when the shift starts.';
   }
@@ -793,14 +787,6 @@ function rebuild(){
   updateCaption();
   update();
 }
-
-document.getElementById('shiftControl').addEventListener('click', (e)=>{
-  const btn = e.target.closest('button');
-  if(!btn) return;
-  shiftStartHour = btn.dataset.hour==='off' ? 'off' : parseInt(btn.dataset.hour,10);
-  savePref(shiftStartHour);
-  rebuild();
-});
 
 document.getElementById('gymControl').addEventListener('click', (e)=>{
   const btn = e.target.closest('button');
@@ -1063,7 +1049,6 @@ else if(desktopQuery.addListener) desktopQuery.addListener(placePomodoro);
   renderLegend();
   await loadTheme();
   applyTheme();
-  await loadPref();
   await loadGymChoice();
   await loadPomoState();
   pomoRender();
