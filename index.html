@@ -116,12 +116,17 @@
   .now-hand{
     position:absolute;
     left:50%; top:50%;
-    width:2px; height:var(--hand-len);
-    background:linear-gradient(to top, var(--text), transparent);
+    width:3px; height:var(--hand-len);
+    background:linear-gradient(to top, var(--text) 65%, transparent);
+    animation:handPulse 2s ease-in-out infinite;
     transform-origin:bottom center;
     transform:translate(-50%,-100%) rotate(0deg);
     border-radius:2px;
     opacity:0.9;
+  }
+  @keyframes handPulse{
+    0%,100%{filter:drop-shadow(0 0 1px rgba(0,0,0,0.5));}
+    50%{filter:drop-shadow(0 0 6px var(--text));}
   }
   .now-dot{
     position:absolute; left:50%; top:50%;
@@ -384,6 +389,7 @@
   }
 
   @media (prefers-reduced-motion: reduce){
+    .now-hand{animation:none;}
     .segmented button{transition:none;}
   }
 
@@ -635,7 +641,10 @@ function buildSchedule(mode){
   return mode === 'off' ? buildDayOff() : buildDayShift(mode);
 }
 
-function buildDialGradient(list){
+// The ring matches the 12-hour analog clock: it shows the current AM or PM half of the day.
+function currentHalf(){ return new Date().getHours()<12 ? 0 : 1; }
+
+function buildDialGradient(list, half){
   // split any segment crossing the 1440 boundary into two pieces, sort by absolute start
   let pieces = [];
   list.forEach(seg=>{
@@ -651,9 +660,12 @@ function buildDialGradient(list){
   });
   pieces.sort((a,b)=>a.start-b.start);
   let stops = [];
+  const h0 = half*720;
   pieces.forEach(p=>{
-    const p0 = (p.start/1440*100).toFixed(3);
-    const p1 = (p.end/1440*100).toFixed(3);
+    const s0 = Math.max(p.start,h0), e0 = Math.min(p.end,h0+720);
+    if(e0<=s0) return;
+    const p0 = ((s0-h0)/720*100).toFixed(3);
+    const p1 = ((e0-h0)/720*100).toFixed(3);
     stops.push(COLORS[p.type]+' '+p0+'%', COLORS[p.type]+' '+p1+'%');
   });
   return 'conic-gradient(from 0deg at 50% 50%, ' + stops.join(', ') + ')';
@@ -699,7 +711,8 @@ function update(){
     now.toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
 
   const hand = document.getElementById('nowHand');
-  hand.style.transform = 'translate(-50%,-100%) rotate(' + (nowMin/1440*360) + 'deg)';
+  hand.style.transform = 'translate(-50%,-100%) rotate(' + ((nowMin%720)/720*360) + 'deg)';
+  if(dialHalf !== currentHalf()) paintDial();
 
   document.querySelectorAll('.agenda-item').forEach(elItem=>elItem.classList.remove('now'));
   document.querySelectorAll('[data-tag]').forEach(t=>t.textContent='');
@@ -780,9 +793,15 @@ function updateCaption(){
   }
 }
 
+let dialHalf = -1;
+function paintDial(){
+  dialHalf = currentHalf();
+  document.getElementById('dialOuter').style.background = buildDialGradient(segmentsBase, dialHalf);
+}
+
 function rebuild(){
   segmentsBase = buildSchedule(shiftStartHour);
-  document.getElementById('dialOuter').style.background = buildDialGradient(segmentsBase);
+  paintDial();
   renderAgenda(segmentsBase);
   setActiveButton();
   updateCaption();
